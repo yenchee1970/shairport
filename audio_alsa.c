@@ -160,7 +160,9 @@ static void start(int sample_rate) {
     device_sample_rate = sample_rate;
 
     int ret, dir = 0;
-    snd_pcm_uframes_t frames = 64;
+    snd_pcm_uframes_t frames = 4410;
+    snd_pcm_uframes_t buffer_size = frames * 4;
+
     ret = snd_pcm_open(&alsa_handle, alsa_out_dev, SND_PCM_STREAM_PLAYBACK, 0);
     if (ret < 0)
         die("Alsa initialization failed: unable to open pcm device: %s\n", snd_strerror(ret));
@@ -172,9 +174,14 @@ static void start(int sample_rate) {
     snd_pcm_hw_params_set_channels(alsa_handle, alsa_params, 2);
     snd_pcm_hw_params_set_rate_near(alsa_handle, alsa_params, (unsigned int *)&sample_rate, &dir);
     snd_pcm_hw_params_set_period_size_near(alsa_handle, alsa_params, &frames, &dir);
+    snd_pcm_hw_params_set_buffer_size_near(alsa_handle, alsa_params, &buffer_size);
     ret = snd_pcm_hw_params(alsa_handle, alsa_params);
     if (ret < 0)
         die("unable to set hw parameters: %s\n", snd_strerror(ret));
+
+    debug(1, "set sample rate %d\n", sample_rate);
+    debug(1, "set period time %d frames\n", frames);
+    debug(1, "set buffer size %d frames\n", buffer_size);
 }
 
 static void play(short buf[], int samples) {
