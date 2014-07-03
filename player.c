@@ -393,12 +393,13 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
             // interpolate one sample
             *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
             *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
+            i++;
         } else if (stuff==-1) {
             debug(3, "---------\n");
             inptr++;
             inptr++;
         }
-        for (i=stuffsamp; i<frame_size + stuff; i++) {
+        for (; i<frame_size + stuff; i++) {
             *outptr++ = dithered_vol(*inptr++);
             *outptr++ = dithered_vol(*inptr++);
         }
