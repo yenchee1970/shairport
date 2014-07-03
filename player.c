@@ -245,6 +245,10 @@ void player_put_packet(seq_t seqno, sync_cfg sync_tag, uint8_t *data, int len) {
         ab_write = seqno;
     } else if (seq_order(ab_read - 1, seqno)) {     // late but not yet played
         abuf = audio_buffer + BUFIDX(seqno);
+        if (abuf->ready) {	// discard this frame if previously received
+            abuf = 0;
+            debug(1, "duplicate packet %04X (%04X:%04X)\n", seqno, ab_read, ab_write);
+       }
     } else {    // too late.
         debug(1, "late packet %04X (%04X:%04X)\n", seqno, ab_read, ab_write);
     }
@@ -322,8 +326,7 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
 
     buf_fill = seq_diff(ab_read, ab_write);
     if (buf_fill < 1) {
-        if (buf_fill < 1)
-            warn("underrun.");
+        warn("underrun %i (%04X:%04X)", buf_fill, ab_read, ab_write);
         ab_buffering = 1;
         ab_synced = SIGNALLOSS;
         state = BUFFERING;
@@ -331,8 +334,10 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
         return 0;
     }
     if (buf_fill >= BUFFER_FRAMES) {   // overrunning! uh-oh. restart at a sane distance
-        warn("overrun.");
+        warn("overrun %i (%04X:%04X)", buf_fill, ab_read, ab_write);
+        read = ab_read;
         ab_read = ab_write - sane_buffer_size;
+        ab_reset(read, ab_read);	// reset any ready frames in those we've skipped
     }
     read = ab_read;
     ab_read++;
@@ -351,7 +356,7 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
 
     abuf_t *curframe = audio_buffer + BUFIDX(read);
     if (!curframe->ready) {
-        debug(1, "missing frame %04X.", read);
+        debug(1, "missing frame %04X\n", read);
         memset(curframe->data, 0, FRAME_BYTES(frame_size));
     }
 
@@ -511,7 +516,7 @@ static void *player_thread_func(void *arg) {
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
                 sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
                 bf_playback_rate = 1.0 - (sync_time_diff / LOSS);
-                debug(2, "Playback rate %f, sync_time %lld\n", bf_playback_rate, sync_time);
+                debug(1, "Playback rate %f, sync_time %lld\n", bf_playback_rate, sync_time);
             }
             play_samples = stuff_buffer(bf_playback_rate, inbuf, outbuf);
             break;

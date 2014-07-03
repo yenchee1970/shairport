@@ -270,8 +270,8 @@ static void *ntp_receiver(void *arg) {
             long long d = (ntp_loc_tsp - ntp_ref_tsp) - (ntp_sen_tsp - ntp_rec_tsp);
             long long c = ((ntp_rec_tsp - ntp_ref_tsp) + (ntp_sen_tsp - ntp_loc_tsp)) / 2;
 
-            debug(2, "Round-trip delay %lld us\n", d);
-            debug(2, "Clock offset %lld us\n", c);
+            debug(1, "Round-trip delay %lld us\n", d);
+            debug(1, "Clock offset %lld us\n", c);
             update_ntp_cache(c, ntp_loc_tsp);
 
             continue;
@@ -310,7 +310,7 @@ static void *ntp_sender(void *arg) {
             debug(1, "send packet failed in send_timing_packet\n");
             die("error(%d)\n", errno);
         }
-        debug(1, "Current time s:%lu us:%lu\n", (unsigned int) tv.tv_sec, (unsigned int) tv.tv_nsec / 1000);
+        debug(2, "Current time s:%lu us:%lu\n", (unsigned int) tv.tv_sec, (unsigned int) tv.tv_nsec / 1000);
         // todo: randomize time at which to send timing packets to avoid timing floods at the client
         if (i<2){
             i++;
