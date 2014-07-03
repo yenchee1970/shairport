@@ -388,12 +388,13 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
             // interpolate one sample
             *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
             *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
+            i++;
         } else if (stuff==-1) {
             debug(3, "---------\n");
             inptr++;
             inptr++;
         }
-        for (i=stuffsamp; i<frame_size + stuff; i++) {
+        for (; i<frame_size + stuff; i++) {
             *outptr++ = dithered_vol(*inptr++);
             *outptr++ = dithered_vol(*inptr++);
         }
@@ -511,7 +512,7 @@ static void *player_thread_func(void *arg) {
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
                 sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
                 bf_playback_rate = 1.0 - (sync_time_diff / LOSS);
-                debug(2, "Playback rate %f, sync_time %lld\n", bf_playback_rate, sync_time);
+                debug(1, "Playback rate %f, sync_time %lld\n", bf_playback_rate, sync_time);
             }
             play_samples = stuff_buffer(bf_playback_rate, inbuf, outbuf);
             break;
