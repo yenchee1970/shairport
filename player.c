@@ -488,6 +488,7 @@ static void *player_thread_func(void *arg) {
                 state = PLAYING;
                 debug(1,"Changing player STATE: %d\n", state);
             }
+	    sync_time_diff = get_sync_time(sync_tag.ntp_tsp);
             break;
         }
         case PLAYING: {
