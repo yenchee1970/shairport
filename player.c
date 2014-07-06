@@ -220,7 +220,7 @@ static long us_to_frames(long long us) {
 
 static inline long long get_sync_time(long long ntp_tsp) {
     long long sync_time_est;
-    sync_time_est = (ntp_tsp + config.delay) - (tstp_us() + get_ntp_offset() + config.output->get_delay());
+    sync_time_est = (ntp_tsp + config.delay + get_ntp_rtd()/2) - (tstp_us() + get_ntp_offset() + config.output->get_delay());
     return sync_time_est;
 }
 
@@ -411,7 +411,10 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 
 //constant first-order filter
 #define ALPHA 0.945
+/*
 #define LOSS 850000.0
+*/
+#define LOSS 680272.0
 
 static double bf_playback_rate = 1.0;
 
@@ -421,10 +424,11 @@ static void *player_thread_func(void *arg) {
     long long sync_time;
     double sync_time_diff = 0.0;
     long sync_frames = 0;
+    long stuff_diff = 0;
     state = BUFFERING;
 
     signed short *inbuf, *outbuf, *resbuf, *silence;
-    outbuf = resbuf = malloc(OUTFRAME_BYTES(frame_size));
+    outbuf = resbuf = malloc(OUTFRAME_BYTES(frame_size+1));
     inbuf = silence = malloc(OUTFRAME_BYTES(frame_size));
     memset(silence, 0, OUTFRAME_BYTES(frame_size));
 
@@ -517,9 +521,11 @@ static void *player_thread_func(void *arg) {
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
                 sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
                 bf_playback_rate = 1.0 - (sync_time_diff / LOSS);
-                debug(1, "Playback rate %f, sync_time %lld\n", bf_playback_rate, sync_time);
+                debug(1, "Playback rate %f, sync_time_diff %lf, sync_tim %lld, stuff diff %ld\n", bf_playback_rate, sync_time_diff, sync_time, stuff_diff);
+                stuff_diff = 0;
             }
             play_samples = stuff_buffer(bf_playback_rate, inbuf, outbuf);
+            stuff_diff += (play_samples - frame_size);
             break;
         }
         default:

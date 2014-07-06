@@ -42,6 +42,7 @@
 #endif
 
 #define NTPCACHESIZE 7
+#define ALPHA 0.945
 
 // only one RTP session can be active at a time.
 static int running = 0;
@@ -57,6 +58,7 @@ static pthread_t ntp_receive_thread;
 static pthread_t ntp_send_thread;
 long long ntp_cache[NTPCACHESIZE + 1];
 static int strict_rtp;
+static long ntp_rtd = 0;
 
 void rtp_record(int rtp_mode){
     debug(2, "Setting strict_rtp to %d\n", rtp_mode);
@@ -90,6 +92,10 @@ static void reset_ntp_cache() {
 
 long long get_ntp_offset() {
     return ntp_cache[NTPCACHESIZE];
+}
+
+long get_ntp_rtd() {
+    return ntp_rtd;
 }
 
 static void update_ntp_cache(long long offset, long long arrival_time) {
@@ -270,10 +276,14 @@ static void *ntp_receiver(void *arg) {
             long long d = (ntp_loc_tsp - ntp_ref_tsp) - (ntp_sen_tsp - ntp_rec_tsp);
             long long c = ((ntp_rec_tsp - ntp_ref_tsp) + (ntp_sen_tsp - ntp_loc_tsp)) / 2;
 
+            if (ntp_rtd) 
+                ntp_rtd = ALPHA * ntp_rtd + (1 - ALPHA) * d;
+            else
+                ntp_rtd = d;
             debug(1, "Round-trip delay %lld us\n", d);
             debug(1, "Clock offset %lld us\n", c);
+            debug(1, "Average round-trip delay %ld us\n", ntp_rtd);
             update_ntp_cache(c, ntp_loc_tsp);
-
             continue;
         }
         warn("Unknown Timing packet of type 0x%02X length %d", type, nread);
