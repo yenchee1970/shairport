@@ -220,7 +220,7 @@ static long us_to_frames(long long us) {
 
 static inline long long get_sync_time(long long ntp_tsp) {
     long long sync_time_est;
-    sync_time_est = (ntp_tsp + config.delay + get_ntp_rtd()/2) - (tstp_us() + get_ntp_offset() + config.output->get_delay());
+    sync_time_est = (ntp_tsp + config.delay) - (tstp_us() + get_ntp_offset() + config.output->get_delay());
     return sync_time_est;
 }
 
@@ -369,16 +369,11 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
     return curframe->data;
 }
 
-static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
+static int stuff_buffer(short *inptr, short *outptr, int stuff) {
     int i;
     int stuffsamp = frame_size;
-    int stuff = 0;
-    double p_stuff;
 
-    p_stuff = 1.0 - pow(1.0 - fabs(playback_rate-1.0), frame_size);
-
-    if (rand() < p_stuff * RAND_MAX) {
-        stuff = playback_rate > 1.0 ? -1 : 1;
+    if (stuff) {
         stuffsamp = 1 + (rand() % (frame_size - 2));
     }
 
@@ -410,11 +405,9 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 }
 
 //constant first-order filter
-#define ALPHA 0.945
-/*
+#define ALPHA 0.9
 #define LOSS 850000.0
-*/
-#define LOSS 680272.0
+#define MAX_STUFF 128
 
 static double bf_playback_rate = 1.0;
 
@@ -424,7 +417,7 @@ static void *player_thread_func(void *arg) {
     long long sync_time;
     double sync_time_diff = 0.0;
     long sync_frames = 0;
-    long stuff_diff = 0;
+    long stuff_diff = 0, stuff_insert = 0;
     state = BUFFERING;
 
     signed short *inbuf, *outbuf, *resbuf, *silence;
@@ -490,7 +483,8 @@ static void *player_thread_func(void *arg) {
                 debug(3,"Samples to go before playback start: %d\n", sync_frames);
             } else {
                 outbuf = resbuf;
-                play_samples = stuff_buffer(bf_playback_rate, inbuf, outbuf);
+                stuff_insert = 0;
+                play_samples = stuff_buffer(inbuf, outbuf, 0);
                 state = PLAYING;
                 debug(1,"Changing player STATE: %d\n", state);
             }
@@ -520,17 +514,24 @@ static void *player_thread_func(void *arg) {
                 //check if we're still in sync.
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
                 sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
-                bf_playback_rate = 1.0 - (sync_time_diff / LOSS);
-                debug(1, "Playback rate %f, sync_time_diff %lf, sync_tim %lld, stuff diff %ld\n", bf_playback_rate, sync_time_diff, sync_time, stuff_diff);
-                stuff_diff = 0;
+                stuff_diff = sync_time_diff / 22.6757;
+                if (labs(stuff_diff) > MAX_STUFF) 
+                    stuff_diff = (stuff_diff > 0) ? MAX_STUFF : -MAX_STUFF;
+                debug(1, "sync_time_diff %lf, sync_tim %lld, stuff diff %ld, stuff insert %ld\n", sync_time_diff, sync_time, stuff_diff, stuff_insert);
+                stuff_insert = 0;
             }
-            play_samples = stuff_buffer(bf_playback_rate, inbuf, outbuf);
-            stuff_diff += (play_samples - frame_size);
+            if (rand() >= RAND_MAX / MAX_STUFF * labs(stuff_diff))
+                play_samples = stuff_buffer(inbuf, outbuf, 0);
+            else if (stuff_diff > 0)
+                play_samples = stuff_buffer(inbuf, outbuf, 1);
+            else
+                play_samples = stuff_buffer(inbuf, outbuf, -1);
             break;
         }
         default:
             break;
         }
+        stuff_insert += (play_samples - frame_size);
         config.output->play(outbuf, play_samples);
     }
 

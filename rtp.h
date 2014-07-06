@@ -9,6 +9,5 @@ void rtp_shutdown(void);
 void rtp_request_resend(seq_t first, seq_t last);
 long long get_ntp_offset();
 long long tstp_us();
-long get_ntp_rtd();
 
 #endif // _RTP_H
