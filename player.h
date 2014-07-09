@@ -3,6 +3,7 @@
 
 #include <limits.h>
 #include "audio.h"
+#include "metadata.h"
 
 #define NOSYNC 0
 #define NTPSYNC 1
@@ -33,6 +34,9 @@ void player_stop(void);
 
 void player_volume(double f);
 unsigned long player_flush(int seqno, unsigned long rtp_tsp);
+void player_metadata();
+void player_cover_image(char *buf, int len, char *ext);
+void player_cover_clear();
 void player_resync(void);
 
 void player_put_packet(seq_t seqno, sync_cfg sync_tag, uint8_t *data, int len);
