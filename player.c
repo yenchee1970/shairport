@@ -516,8 +516,9 @@ static void *player_thread_func(void *arg) {
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
                 sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
                 stuff_diff = sync_time_diff / 22.6757;
-                if (labs(stuff_diff) > MAX_STUFF) 
-                    stuff_diff = (stuff_diff > 0) ? MAX_STUFF : -MAX_STUFF;
+                stuff_diff = (labs(stuff_diff) + 8) & 0xfffffff0;
+                if (stuff_diff > MAX_STUFF) stuff_diff = MAX_STUFF;
+                if (sync_time_diff < 0.0) stuff_diff = -stuff_diff;
                 debug(1, "sync_time_diff %lf, sync_tim %lld, stuff diff %ld, stuff insert %ld\n", sync_time_diff, sync_time, stuff_diff, stuff_insert);
                 stuff_insert = 0;
             }
