@@ -37,14 +37,14 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <soxr.h>
 
 #include "common.h"
 #include "player.h"
 #include "rtp.h"
 
-#ifdef FANCY_RESAMPLING
 #include <samplerate.h>
-#endif
+
 
 #include "alac.h"
 
@@ -366,7 +366,6 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
 
 static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     int i;
-    int stuffsamp = frame_size;
     int stuff = 0;
     double p_stuff;
 
@@ -374,29 +373,37 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 
     if (rand() < p_stuff * RAND_MAX) {
         stuff = playback_rate > 1.0 ? -1 : 1;
-        stuffsamp = 1 + (rand() % (frame_size - 2));
     }
 
     pthread_mutex_lock(&vol_mutex);
-    for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
+    for (i=0; i<frame_size; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
     if (stuff) {
         if (stuff==1) {
-            debug(3, "+++++++++\n");
-            // interpolate one sample
-            *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
-            *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
+            debug(1, "+++++++++\n");
         } else if (stuff==-1) {
-            debug(3, "---------\n");
-            inptr++;
-            inptr++;
+            debug(1, "---------\n");
         }
-        for (i=stuffsamp; i<frame_size + stuff; i++) {
-            *outptr++ = dithered_vol(*inptr++);
-            *outptr++ = dithered_vol(*inptr++);
-        }
+
+    	float * src_in = malloc(sizeof(*src_in) * 2 * (frame_size)); /* Allocate input buffer. */
+    	float * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
+    	outptr = outptr - 2 * frame_size;
+    	src_short_to_float_array (outptr , src_in, frame_size * 2);
+
+    	size_t odone;
+    	soxr_error_t error = soxr_oneshot(frame_size, frame_size + stuff, 2, /* Rates and # of chans. */
+    	src_in, frame_size, NULL, /* Input. */
+    	src_out, frame_size + stuff, &odone, /* Output. */
+    	NULL, NULL, NULL); /* Default configuration.*/
+    	if (error)
+    		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
+
+    	src_float_to_short_array (src_out, outptr, 2 * (odone));
+    	debug(1,"odone %d\n", odone);
+    	free(src_in);
+    	free(src_out);
     }
     pthread_mutex_unlock(&vol_mutex);
 
