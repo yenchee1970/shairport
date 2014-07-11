@@ -380,10 +380,12 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
+    pthread_mutex_unlock(&vol_mutex);
     if (stuff) {
     	float * src_in = malloc(sizeof(*src_in) * 2 * (frame_size)); /* Allocate input buffer. */
     	float * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
     	short * src_s_out = malloc(sizeof(*src_s_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
+    	short * src_s_out_bu = src_s_out;
     	outptr = outptr - 2 * frame_size;
     	src_short_to_float_array (outptr , src_in, frame_size * 2);
 
@@ -428,9 +430,9 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
             *outptr++ = *src_s_out++;
             *outptr++ = *src_s_out++;
         }
-        free(src_s_out);
+
+        free(src_s_out_bu);
     }
-    pthread_mutex_unlock(&vol_mutex);
 
     return frame_size + stuff;
 }
