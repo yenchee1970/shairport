@@ -365,7 +365,7 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
 }
 
 static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
-    int i;
+    int i, samp;
     int stuff = 0;
     double p_stuff;
 
@@ -381,14 +381,9 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
         *outptr++ = dithered_vol(*inptr++);
     };
     if (stuff) {
-        if (stuff==1) {
-            debug(1, "+++++++++\n");
-        } else if (stuff==-1) {
-            debug(1, "---------\n");
-        }
-
     	float * src_in = malloc(sizeof(*src_in) * 2 * (frame_size)); /* Allocate input buffer. */
     	float * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
+    	short * src_s_out = malloc(sizeof(*src_s_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
     	outptr = outptr - 2 * frame_size;
     	src_short_to_float_array (outptr , src_in, frame_size * 2);
 
@@ -400,10 +395,40 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     	if (error)
     		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
 
-    	src_float_to_short_array (src_out, outptr, 2 * (odone));
+    	if (odone > frame_size + 1)
+    		die("odone = %d!\n", odone);
+
+    	src_float_to_short_array (src_out, src_s_out, 2 * (odone));
     	debug(1,"odone %d\n", odone);
     	free(src_in);
     	free(src_out);
+
+    	// keep last 7 samples
+        if (stuff==1) {
+            debug(1, "+++++++++\n");
+            // shift samples right
+            for (i=0; i < 7 * 2; i++){
+            	samp = (frame_size * 2) - 1 - i;
+                outptr[samp + 2] = outptr[samp];
+            }
+        } else if (stuff==-1) {
+            debug(1, "---------\n");
+            // shift samples left
+            for (i=0; i < 7 * 2; i++){
+            	samp = (frame_size * 2) - 7 * 2 + i;
+                outptr[samp - 2] = outptr[samp];
+            }
+        }
+    	// keep first 7 samples
+    	outptr = outptr + 7 * 2;
+    	src_s_out = src_s_out + 7 * 2;
+
+    	// keep last 7 samples
+        for (i=0; i<frame_size + stuff - 7 * 2; i++) {   //
+            *outptr++ = *src_s_out++;
+            *outptr++ = *src_s_out++;
+        }
+        free(src_s_out);
     }
     pthread_mutex_unlock(&vol_mutex);
 
