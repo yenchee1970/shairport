@@ -38,13 +38,15 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <soxr.h>
+#include <soxr-lsr.h>
 
 #include "common.h"
 #include "player.h"
 #include "rtp.h"
 
+#ifdef FANCY_RESAMPLING
 #include <samplerate.h>
-
+#endif
 
 #include "alac.h"
 
