@@ -51,7 +51,8 @@ install: shairport
 GITREV=$(shell git describe --always)
 DIRTY:=$(shell if ! git diff --quiet --exit-code; then echo -dirty; fi)
 VERSION=\"$(GITREV)$(DIRTY)\"
-__version_file:
+
+version.h:
 	@if [ ! -f version.h -o "`cat .version 2>/dev/null`" != '$(VERSION)' ]; then \
 		echo $(VERSION) > version.h; \
 	fi
@@ -59,7 +60,7 @@ __version_file:
 %.o: %.c $(DEPS)
 	$(CC) -c $(CFLAGS) $<
 
-shairport.o: __version_file
+shairport.o: version.h
 
 OBJS := $(SRCS:.c=.o)
 shairport: $(OBJS)
