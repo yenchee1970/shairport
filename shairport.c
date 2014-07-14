@@ -138,12 +138,13 @@ int parse_options(int argc, char **argv) {
         {"wait-cmd",  no_argument,        NULL, 'w'},
         {"meta-dir",  required_argument,  NULL, 'M'},
         {"mdns",      required_argument,  NULL, 'm'},
+        {"delay",     required_argument,  NULL, 't'},
         {NULL,        0,                  NULL,   0}
     };
 
     int opt;
     while ((opt = getopt_long(argc, argv,
-                              "+hdvP:l:e:p:a:k:o:b:B:E:M:wm:",
+                              "+hdvP:l:e:p:a:k:o:t:B:E:M:wm:",
                               long_options, NULL)) > 0) {
         switch (opt) {
             default:

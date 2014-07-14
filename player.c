@@ -37,6 +37,8 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <soxr.h>
+#include <soxr-lsr.h>
 
 #include "common.h"
 #include "player.h"
@@ -370,46 +372,78 @@ static short *buffer_get_frame(sync_cfg *sync_tag) {
 }
 
 static int stuff_buffer(short *inptr, short *outptr, int stuff) {
-    int i;
-    int stuffsamp = frame_size;
-
-    if (stuff) {
-        stuffsamp = 1 + (rand() % (frame_size - 2));
-    }
+    int i, samp;
+    short *o_outptr = outptr;
 
     pthread_mutex_lock(&vol_mutex);
-    for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
+    for (i=0; i<frame_size; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
-    if (stuff) {
-        if (stuff==1) {
-            debug(3, "+++++++++\n");
-            // interpolate one sample
-            *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
-            *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
-            i++;
-        } else if (stuff==-1) {
-            debug(3, "---------\n");
-            inptr++;
-            inptr++;
-        }
-        for (; i<frame_size + stuff; i++) {
-            *outptr++ = dithered_vol(*inptr++);
-            *outptr++ = dithered_vol(*inptr++);
-        }
-    }
+
     pthread_mutex_unlock(&vol_mutex);
+    if (stuff) {
+    	float * src_in = malloc(sizeof(*src_in) * 2 * (frame_size)); /* Allocate input buffer. */
+    	float * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
+    	short * src_s_out = malloc(sizeof(*src_s_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
+    	short * src_s_out_bu = src_s_out;
+    	outptr = o_outptr;
+    	src_short_to_float_array (outptr , src_in, frame_size * 2);
+
+    	size_t odone;
+    	soxr_error_t error = soxr_oneshot(frame_size, frame_size + stuff, 2, /* Rates and # of chans. */
+    	src_in, frame_size, NULL, /* Input. */
+    	src_out, frame_size + stuff, &odone, /* Output. */
+    	NULL, NULL, NULL); /* Default configuration.*/
+    	if (error)
+    		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
+
+    	if (odone > frame_size + 1)
+    		die("odone = %d!\n", odone);
+
+    	src_float_to_short_array (src_out, src_s_out, 2 * (odone));
+    	debug(2,"odone %d\n", odone);
+    	free(src_in);
+    	free(src_out);
+
+    	// keep last 7 samples
+        if (stuff==1) {
+            debug(2, "+++++++++\n");
+            // shift samples right
+            for (i=0; i < 7 * 2; i++){
+            	samp = (frame_size * 2) - 1 - i;
+                outptr[samp + 2] = outptr[samp];
+            }
+        } else if (stuff==-1) {
+            debug(2, "---------\n");
+            // shift samples left
+            for (i=0; i < 7 * 2; i++){
+            	samp = (frame_size * 2) - 7 * 2 + i;
+                outptr[samp - 2] = outptr[samp];
+            }
+        }
+    	// keep first 7 samples
+    	outptr = outptr + 7 * 2;
+    	src_s_out = src_s_out + 7 * 2;
+
+    	// keep last 7 samples
+        for (i=0; i<frame_size + stuff - 7 * 2; i++) {   //
+            *outptr++ = *src_s_out++;
+            *outptr++ = *src_s_out++;
+        }
+
+        free(src_s_out_bu);
+    }
 
     return frame_size + stuff;
 }
 
 //constant first-order filter
-#define ALPHA 0.9
+#define ALPHA 0.945
 #define LOSS 850000.0
 #define MAX_STUFF 128
 
-static double bf_playback_rate = 1.0;
+//static double bf_playback_rate = 1.0;
 
 static void *player_thread_func(void *arg) {
     int play_samples = frame_size;
@@ -422,6 +456,7 @@ static void *player_thread_func(void *arg) {
 
     signed short *inbuf, *outbuf, *resbuf, *silence;
     outbuf = resbuf = malloc(OUTFRAME_BYTES(frame_size+1));
+
     inbuf = silence = malloc(OUTFRAME_BYTES(frame_size));
     memset(silence, 0, OUTFRAME_BYTES(frame_size));
 

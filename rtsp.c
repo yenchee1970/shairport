@@ -443,7 +443,9 @@ static void handle_setup(rtsp_conn_info *conn,
     player_play(&conn->stream);
 
     char resphdr[200];
-    sprintf(resphdr, "%s;server_port=%d;control_port=%d;timing_port=%d", "RTP/AVP/UDP;unicast;interleaved=0-1;mode=record", sport, cport, tport);
+    snprintf(resphdr, sizeof(resphdr),
+             "RTP/AVP/UDP;unicast;interleaved=0-1;mode=record;server_port=%d;control_port=%d;timing_port=%d",
+             sport, cport, tport);
     msg_add_header(resp, "Transport", resphdr);
 
     msg_add_header(resp, "Session", "1");

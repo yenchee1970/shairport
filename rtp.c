@@ -155,9 +155,6 @@ static long long ntp_tsp_to_us(uint32_t timestamp_hi, uint32_t timestamp_lo) {
 static void *rtp_receiver(void *arg) {
     // we inherit the signal mask (SIGUSR1)
     uint8_t packet[2048], *pktp;
-    long long ntp_tsp_sync = 0;
-    unsigned long rtp_tsp_sync = 0;
-    int sync_mode;
     sync_cfg sync_tag, no_tag;
     sync_cfg * pkt_tag;
     int sync_fresh = 0;
