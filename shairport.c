@@ -113,6 +113,14 @@ void usage(char *progname) {
     printf("                            if no mdns provider is specified,\n");
     printf("                            shairport tries them all until one works.\n");
     printf("    -r, --soxr=QUALITY      set libsoxr quality\n");
+    printf("          0 Quick - cubic interpolation\n");
+    printf("          1 Low - 16-bit with larger rolloff (*default)\n");
+    printf("          2 Medium - 16-bit with medium rolloff\n");
+    printf("          4 High - 20-bit quality\n");
+    printf("          6 Very high - 28-bit quality\n");
+    printf("          8 Basic sinc\n");
+    printf("          9 Medium sinc\n");
+    printf("         10 Fast sinc\n");
 
     printf("\n");
     mdns_ls_backends();

@@ -440,9 +440,9 @@ static int stuff_buffer(short *inptr, short *outptr, int stuff) {
 }
 
 //constant first-order filter
-#define ALPHA 0.945
+#define ALPHA 0.9
 #define LOSS 850000.0
-#define MAX_STUFF 128
+#define MAX_STUFF 32
 
 //static double bf_playback_rate = 1.0;
 
@@ -550,18 +550,14 @@ static void *player_thread_func(void *arg) {
             if (sync_tag.sync_mode == NTPSYNC) {
                 //check if we're still in sync.
                 sync_time = get_sync_time(sync_tag.ntp_tsp);
-                if (sync_time_diff > 0.0 || sync_time * (long)sync_time_diff > 0)
-                    sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
-                else
-                    sync_time_diff = sync_time;
+                sync_time_diff = (ALPHA * sync_time_diff) + (1.0- ALPHA) * (double)sync_time;
                 stuff_diff = labs(sync_time_diff / 68.0272);
-                // stuff_diff = (labs(stuff_diff) + 1) & 0xfffffffe;
                 if (stuff_diff > MAX_STUFF) stuff_diff = MAX_STUFF;
                 if (sync_time_diff < 0.0) stuff_diff = -stuff_diff;
                 debug(1, "sync_time_diff %lf, sync_tim %lld, stuff diff %ld, stuff insert %ld\n", sync_time_diff, sync_time, stuff_diff, stuff_insert);
                 stuff_insert = 0;
             }
-            if (rand() >= RAND_MAX / MAX_STUFF * labs(stuff_diff))
+            if ((rand() >= RAND_MAX / MAX_STUFF * labs(stuff_diff)) || (rand() >= (RAND_MAX >> 7) * MAX_STUFF))
                 play_samples = stuff_buffer(inbuf, outbuf, 0);
             else if (stuff_diff > 0)
                 play_samples = stuff_buffer(inbuf, outbuf, 1);

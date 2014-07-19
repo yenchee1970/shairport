@@ -177,11 +177,11 @@ static void start(int sample_rate) {
     snd_pcm_hw_params_get_buffer_size_max(alsa_params, &buffer_size);
     debug(1, "Hardware supports period_size_max: %d, buffer_size_max: %d\n", period_size, buffer_size);
 
-    // we want about 333 ms of buffer, and 50ms period
+    // we want about 500 ms of buffer, and 100ms period
     // buffer might still need some tweaking to get reliable operation on RPi + USB DAC...
     // make sure we do not exceed what HW supports
-    period_size = (period_size < sample_rate / 20 ? period_size : sample_rate / 20);
-    buffer_size = (buffer_size < sample_rate / 3 ? buffer_size : sample_rate / 3);
+    period_size = (period_size < sample_rate / 10 ? period_size : sample_rate / 10);
+    buffer_size = (buffer_size < sample_rate / 2 ? buffer_size : sample_rate / 2);
 
     // make sure buffer size is at least 4 times period size
     period_size = (period_size < buffer_size / 4 ? period_size : buffer_size / 4);
