@@ -34,6 +34,7 @@ typedef struct {
     char *pidfile;
     char *logfile;
     char *errfile;
+    unsigned long soxr;
 } shairport_cfg;
 
 extern int debuglev;

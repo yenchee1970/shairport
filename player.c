@@ -68,6 +68,7 @@ static alac_file *decoder_info;
 static int fancy_resampling = 1;
 static SRC_STATE *src;
 #endif
+static soxr_quality_spec_t qspec;
 
 
 // interthread variables
@@ -394,7 +395,7 @@ static int stuff_buffer(short *inptr, short *outptr, int stuff) {
     	soxr_error_t error = soxr_oneshot(frame_size, frame_size + stuff, 2, /* Rates and # of chans. */
     	src_in, frame_size, NULL, /* Input. */
     	src_out, frame_size + stuff, &odone, /* Output. */
-    	NULL, NULL, NULL); /* Default configuration.*/
+    	NULL, &qspec, NULL); /* Default configuration.*/
     	if (error)
     		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
 
@@ -622,6 +623,7 @@ int player_play(stream_cfg *stream) {
 #ifdef FANCY_RESAMPLING
     init_src();
 #endif
+    qspec = soxr_quality_spec(config.soxr, 0);
 
     sane_buffer_size = ((config.delay / 1000) * sampling_rate * 2) / (frame_size * 1000 * 3);
     sane_buffer_size = (sane_buffer_size >= 10 ? sane_buffer_size : 10);

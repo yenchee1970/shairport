@@ -112,6 +112,7 @@ void usage(char *progname) {
     printf("    -m, --mdns=BACKEND      force the use of BACKEND to advertise the service\n");
     printf("                            if no mdns provider is specified,\n");
     printf("                            shairport tries them all until one works.\n");
+    printf("    -r, --soxr=QUALITY      set libsoxr quality\n");
 
     printf("\n");
     mdns_ls_backends();
@@ -139,12 +140,13 @@ int parse_options(int argc, char **argv) {
         {"meta-dir",  required_argument,  NULL, 'M'},
         {"mdns",      required_argument,  NULL, 'm'},
         {"delay",     required_argument,  NULL, 't'},
+        {"soxr",      required_argument,  NULL, 'r'},
         {NULL,        0,                  NULL,   0}
     };
 
     int opt;
     while ((opt = getopt_long(argc, argv,
-                              "+hdvP:l:e:p:a:k:o:t:B:E:M:wm:",
+                              "+hdvP:l:e:p:a:k:o:t:B:E:M:wm:r:",
                               long_options, NULL)) > 0) {
         switch (opt) {
             default:
@@ -197,6 +199,9 @@ int parse_options(int argc, char **argv) {
                 break;
             case 'm':
                 config.mdns_name = optarg;
+                break;
+            case 'r':
+                config.soxr = atoi(optarg);
                 break;
         }
     }
@@ -285,6 +290,7 @@ int main(int argc, char **argv) {
     gethostname(hostname, 100);
     config.apname = malloc(20 + 100);
     snprintf(config.apname, 20 + 100, "Shairport on %s", hostname);
+    config.soxr = 1;	// set default to SOXR_LQ
 
     // parse arguments into config
     int audio_arg = parse_options(argc, argv);
@@ -296,6 +302,10 @@ int main(int argc, char **argv) {
     if (config.daemonise) {
         daemon_init();
     }
+
+    // check soxr quality range
+    if (config.soxr < 0 || config.soxr > 10)
+        die("libsoxr quality range from 0 to 10"); 
 
     log_setup();
 
