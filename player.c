@@ -69,6 +69,7 @@ static int fancy_resampling = 1;
 static SRC_STATE *src;
 #endif
 static soxr_quality_spec_t qspec;
+static soxr_io_spec_t iospec;
 
 
 // interthread variables
@@ -384,29 +385,24 @@ static int stuff_buffer(short *inptr, short *outptr, int stuff) {
 
     pthread_mutex_unlock(&vol_mutex);
     if (stuff) {
-    	float * src_in = malloc(sizeof(*src_in) * 2 * (frame_size)); /* Allocate input buffer. */
-    	float * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
-    	short * src_s_out = malloc(sizeof(*src_s_out) * 2 * (frame_size + 2)); /* Allocate output buffer. */
-    	short * src_s_out_bu = src_s_out;
-    	outptr = o_outptr;
-    	src_short_to_float_array (outptr , src_in, frame_size * 2);
+    	short * src_in = o_outptr; /* Allocate input buffer. */
+    	short * src_out = malloc(sizeof(*src_out) * 2 * (frame_size + 1)); /* Allocate output buffer. */
+    	short * src_out_bu = src_out;
 
     	size_t odone;
     	soxr_error_t error = soxr_oneshot(frame_size, frame_size + stuff, 2, /* Rates and # of chans. */
     	src_in, frame_size, NULL, /* Input. */
     	src_out, frame_size + stuff, &odone, /* Output. */
-    	NULL, &qspec, NULL); /* Default configuration.*/
+    	&iospec, &qspec, NULL); /* Default configuration.*/
     	if (error)
     		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
 
     	if (odone > frame_size + 1)
     		die("odone = %d!\n", odone);
 
-    	src_float_to_short_array (src_out, src_s_out, 2 * (odone));
     	debug(2,"odone %d\n", odone);
-    	free(src_in);
-    	free(src_out);
 
+        outptr = o_outptr;
     	// keep last 7 samples
         if (stuff==1) {
             debug(2, "+++++++++\n");
@@ -425,15 +421,15 @@ static int stuff_buffer(short *inptr, short *outptr, int stuff) {
         }
     	// keep first 7 samples
     	outptr = outptr + 7 * 2;
-    	src_s_out = src_s_out + 7 * 2;
+    	src_out = src_out + 7 * 2;
 
     	// keep last 7 samples
         for (i=0; i<frame_size + stuff - 7 * 2; i++) {   //
-            *outptr++ = *src_s_out++;
-            *outptr++ = *src_s_out++;
+            *outptr++ = *src_out++;
+            *outptr++ = *src_out++;
         }
 
-        free(src_s_out_bu);
+        free(src_out_bu);
     }
 
     return frame_size + stuff;
@@ -620,6 +616,7 @@ int player_play(stream_cfg *stream) {
     init_src();
 #endif
     qspec = soxr_quality_spec(config.soxr, 0);
+    iospec = soxr_io_spec(SOXR_INT16_I, SOXR_INT16_I);
 
     sane_buffer_size = ((config.delay / 1000) * sampling_rate * 2) / (frame_size * 1000 * 3);
     sane_buffer_size = (sane_buffer_size >= 10 ? sane_buffer_size : 10);
