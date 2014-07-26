@@ -38,7 +38,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <soxr.h>
-#include <soxr-lsr.h>
 
 #include "common.h"
 #include "player.h"
