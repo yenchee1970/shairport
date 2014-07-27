@@ -621,7 +621,7 @@ int player_play(stream_cfg *stream) {
     sane_buffer_size = (sane_buffer_size >= 10 ? sane_buffer_size : 10);
     if (sane_buffer_size > BUFFER_FRAMES)
         die("buffer starting fill %d > buffer size %d", sane_buffer_size, BUFFER_FRAMES);
-    debug(1, "buffer size set to %d\n", sane_buffer_size);
+    debug(1, "soxr quality %d, buffer size set to %d\n", config.soxr, sane_buffer_size);
 
     please_stop = 0;
     command_start();

@@ -338,5 +338,6 @@ int main(int argc, char **argv) {
 
     // should not.
     shairport_shutdown(1);
+    free(config.apname);
     return 1;
 }
