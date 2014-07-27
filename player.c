@@ -396,21 +396,21 @@ static int stuff_buffer(short *inptr, short *outptr, int stuff) {
     	if (error)
     		die("soxr error: %s\n", "error: %s\n", soxr_strerror(error));
 
-    	if (odone > frame_size + 1)
-    		die("odone = %d!\n", odone);
+    	if (odone > frame_size + stuff)
+    		die("odone = %d, stuff = %d!\n", odone, stuff);
 
     	debug(2,"odone %d\n", odone);
 
         outptr = o_outptr;
     	// keep last 7 samples
-        if (stuff==1) {
+        if (stuff > 0) {
             debug(2, "+++++++++\n");
             // shift samples right
             for (i=0; i < 7 * 2; i++){
             	samp = (frame_size * 2) - 1 - i;
                 outptr[samp + 2] = outptr[samp];
             }
-        } else if (stuff==-1) {
+        } else if (stuff < 0) {
             debug(2, "---------\n");
             // shift samples left
             for (i=0; i < 7 * 2; i++){
@@ -451,7 +451,7 @@ static void *player_thread_func(void *arg) {
     state = BUFFERING;
 
     signed short *inbuf, *outbuf, *resbuf, *silence;
-    outbuf = resbuf = malloc(OUTFRAME_BYTES(frame_size+1));
+    outbuf = resbuf = malloc(OUTFRAME_BYTES(frame_size));
 
     inbuf = silence = malloc(OUTFRAME_BYTES(frame_size));
     memset(silence, 0, OUTFRAME_BYTES(frame_size));
